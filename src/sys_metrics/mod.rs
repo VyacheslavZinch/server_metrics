@@ -1,6 +1,7 @@
 
 pub mod sys_metrics {
     use rocket::serde::{Serialize, json::Json};
+    use std::time::{SystemTime, UNIX_EPOCH};
     use sysinfo::System;
 
     #[derive(Debug, Serialize, Clone)]
@@ -22,7 +23,7 @@ pub mod sys_metrics {
         pid: u32,
         name: String,
         cpu_usage: f32,
-        start_time: f32,
+        lifetime: u64,
         virtual_memory: u64,
         read_bytes: u64,
         write_bytes: u64,
@@ -68,13 +69,13 @@ pub mod sys_metrics {
     }
     impl Process {
         pub fn new(
-            pid: u32, name: String, cpu_usage: f32, start_time: f32,
+            pid: u32, name: String, cpu_usage: f32, lifetime: u64,
             virtual_memory: u64, read_bytes: u64, write_bytes: u64) -> Process {
             Process {
                 pid,
                 name,
                 cpu_usage,
-                start_time,
+                lifetime,
                 virtual_memory,
                 read_bytes,
                 write_bytes,
@@ -85,12 +86,19 @@ pub mod sys_metrics {
             let mut sys = System::new_all();
             sys.refresh_all();
 
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_secs();
+
             for (pid, process) in sys.processes() {
+                let lifetime = now - process.start_time();
+
                 let proc = Process::new(
                     pid.as_u32(),
                     process.name().to_str().unwrap().to_string(),
                     process.cpu_usage(),
-                    process.start_time() as f32 / 60.0,
+                    lifetime,
                     process.virtual_memory()/1024,
                     process.disk_usage().read_bytes/1024,
                     process.disk_usage().written_bytes/1024
@@ -99,9 +107,6 @@ pub mod sys_metrics {
 
             }
             processes
-
-
-
         }
         pub fn json_data(data: Vec<Process>) -> Json<Vec<Process>> {
             Json(data)
