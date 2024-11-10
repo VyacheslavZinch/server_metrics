@@ -4,8 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+tokio = { version = "1", features = ["full"] }
 rocket = { version = "0.5.1", features = ["json"] }
 sysinfo = "0.32.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
- 
+rsa = "0.9.6"
+rand = "0.8.5"
+base64 = "0.22.1"
+dotenv = "0.15.0"
+redis = { version = "0.27.0", features = ["tokio-comp"] }
