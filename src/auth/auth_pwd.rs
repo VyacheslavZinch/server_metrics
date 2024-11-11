@@ -20,6 +20,7 @@ impl BasicAuth {
         Self::from_base64_encoded(split[1])
     }
 
+
     fn from_base64_encoded(base64_string: &str) -> Option<BasicAuth> {
         let decoded = base64::decode(base64_string).ok()?;
         let decoded_str = String::from_utf8(decoded).ok()?;
@@ -40,17 +41,17 @@ impl BasicAuth {
 }
 
 #[rocket::async_trait]
-impl<'a, 'r> FromRequest<'a, 'r> for BasicAuth {
+impl<'r> FromRequest<'r> for BasicAuth {
     type Error = ();
 
-    async fn from_request(request: &'a Request<'r>) -> Outcome<Self, Self::Error> {
-        let auth_header = request.headers().get_one("Authorization");
-        if let Some(auth_header) = auth_header {
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error>  {
+        if let Some(auth_header) = request.headers().get_one("Authorization") {
             if let Some(auth) = Self::from_authorization_header(auth_header) {
-                return Outcome::Success(auth)
+                return Outcome::Success(auth);
             }
         }
-
-        Outcome::Failure((Status::Unauthorized, ()))
+        
+        Outcome::Error((Status::Unauthorized, ()))
     }
 }
+
