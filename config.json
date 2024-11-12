@@ -1,0 +1,16 @@
+{
+        "auth_type": "token",
+        "fetch_data_interval": 60.0,
+        "warnings":{
+            "cpu_usage": 15.0,
+            "mem_usage": 512
+        },
+        "alerts":{
+            "cpu_usage": 15.0,
+            "mem_usage": 512
+        },
+        "exec_commands": true,
+        "loglevel": "all"
+        
+
+}

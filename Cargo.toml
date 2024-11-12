@@ -7,7 +7,7 @@ edition = "2021"
 rocket = { version = "0.5.1", features = ["json"] }
 rocket_dyn_templates = { version = "0.2.0", features = ["tera"] }
 sysinfo = "0.32.0"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0"
 rsa = "0.9.6"
 rand = "0.8.5"

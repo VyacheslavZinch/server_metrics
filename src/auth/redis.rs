@@ -1,7 +1,7 @@
-use std::{collections::HashMap, env};
 use dotenv;
 use rand::{distributions::Alphanumeric, Rng};
 use redis::*;
+use std::{collections::HashMap, env};
 use tokio::task;
 
 async fn conn_str() -> String {
@@ -16,7 +16,6 @@ async fn conn_str() -> String {
 }
 
 pub async fn get_auth_datas() -> HashMap<String, String> {
-
     let conn_str = conn_str().await;
     let client = Client::open(conn_str);
     let conn = client.unwrap().get_multiplexed_async_connection().await;
@@ -24,11 +23,9 @@ pub async fn get_auth_datas() -> HashMap<String, String> {
     let data: HashMap<String, String> = conn.unwrap().get("auth_data").await.unwrap();
 
     data
-
 }
 
 pub async fn get_auth_tokens() -> Vec<String> {
-
     let mut result = Vec::<String>::new();
     let conn_str = conn_str().await;
     let client = Client::open(conn_str);
@@ -36,8 +33,4 @@ pub async fn get_auth_tokens() -> Vec<String> {
 
     result = conn.unwrap().get("tokens").await.unwrap();
     result
-    
 }
-
-
-

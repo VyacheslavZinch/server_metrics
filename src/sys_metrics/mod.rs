@@ -1,45 +1,40 @@
-#[allow(unused)]
-
-
 pub mod sys_metrics {
 
+    use rocket::serde::{json::Json, Serialize};
     use std::fmt::{Debug, Display};
-    use rocket::serde::{Serialize, json::Json};
     use std::time::{SystemTime, UNIX_EPOCH};
     use sysinfo::{Components, Cpu, Disks, Networks, System};
 
     #[derive(Debug, Serialize, Clone)]
-    pub struct MemInfo{
+    pub struct MemInfo {
         total_memory: u64,
-        used_memory:  u64,
-        total_swap:   u64,
-        used_swap:    u64
+        used_memory: u64,
+        total_swap: u64,
+        used_swap: u64,
     }
-    
+
     #[derive(Debug, Serialize, Clone)]
-    pub struct CpuData{
+    pub struct CpuData {
         name: String,
         vendor_id: String,
         cpu_usage: f32,
-        brand: String
+        brand: String,
+    }
 
-    }
-    
     #[derive(Debug, Serialize, Clone)]
-    pub struct CpuInfo{
-        cpus:  Vec<CpuData>,
-        global_usage_cpus: f32
-        
+    pub struct CpuInfo {
+        cpus: Vec<CpuData>,
+        global_usage_cpus: f32,
     }
-    
+
     #[derive(Debug, Serialize, Clone)]
     pub struct SysInfo {
         sys_name: String,
         kernel_version: String,
         sys_os_version: String,
-        sys_host_name: String
+        sys_host_name: String,
     }
-    
+
     #[derive(Debug, Serialize, Clone)]
     pub struct Process {
         pid: u32,
@@ -50,40 +45,49 @@ pub mod sys_metrics {
         read_bytes: u64,
         write_bytes: u64,
     }
-    
+
     #[derive(Debug, Serialize, Clone)]
-    pub struct Disk{
+    pub struct Disk {
         name: String,
         available_space: u64,
         total_space: u64,
         file_system: String,
         mount_point: String,
     }
-    
+
     #[derive(Debug, Serialize, Clone)]
-    pub struct NetworkInterface{
+    pub struct NetworkInterface {
         name: String,
         mac_addr: String,
         ip: String,
         prefix: u8,
         total_received: u64,
         total_transmitted: u64,
-
     }
-    
+
     #[derive(Debug, Serialize, Clone)]
-    pub struct Component{
+    pub struct Component {
         label: String,
         current_temperature: f32,
         max_temperature: f32,
     }
 
+    #[derive(Debug, Serialize, Clone)]
+    pub struct AllData {
+        sys_info: SysInfo,
+        cpu: CpuInfo,
+        memory: MemInfo,
+        network: Vec<NetworkInterface>,
+        storage: Vec<Disk>,
+        components: Vec<Component>,
+    }
 
     pub trait OutputData<T>
-        where T: Serialize + From<Self>, Self: Sized + Clone {
-
-        fn json_data(&self) -> Json<T>{
-            let self_clone = self.clone();
+    where
+        T: Serialize + From<Self>,
+        Self: Sized + Clone,
+    {
+        fn json_data(&self) -> Json<T> {
             Json(T::from(self.clone()))
         }
         fn new() -> T;
@@ -94,22 +98,21 @@ pub mod sys_metrics {
             let mut sys = System::new_all();
             sys.refresh_all();
 
-            MemInfo{
-                total_memory: (sys.total_memory()/1024),
-                used_memory:  (sys.used_memory()/1024),
-                total_swap:   (sys.total_swap()/1024),
-                used_swap:    (sys.used_swap()/1024)
+            MemInfo {
+                total_memory: (sys.total_memory() / 1024),
+                used_memory: (sys.used_memory() / 1024),
+                total_swap: (sys.total_swap() / 1024),
+                used_swap: (sys.used_swap() / 1024),
             }
         }
     }
-    
+
     impl OutputData<CpuInfo> for CpuInfo {
         fn new() -> CpuInfo {
             let mut sys = System::new_all();
             sys.refresh_all();
 
             let cpus = {
-
                 let mut all_cpus_result = Vec::<CpuData>::new();
                 let cpus = sys.cpus();
 
@@ -119,23 +122,21 @@ pub mod sys_metrics {
                     let cpu_usage = element.cpu_usage();
                     let brand = element.brand().to_string();
 
-                    all_cpus_result.push(CpuData{
+                    all_cpus_result.push(CpuData {
                         name,
                         vendor_id,
                         cpu_usage,
-                        brand
+                        brand,
                     });
                 }
                 all_cpus_result
-        
             };
             let global_usage_cpus = sys.global_cpu_usage();
 
             CpuInfo {
                 cpus,
-                global_usage_cpus
+                global_usage_cpus,
             }
-
         }
     }
 
@@ -148,15 +149,41 @@ pub mod sys_metrics {
                 sys_name: System::name().unwrap(),
                 kernel_version: System::kernel_version().unwrap(),
                 sys_os_version: System::os_version().unwrap(),
-                sys_host_name: System::host_name().unwrap()
+                sys_host_name: System::host_name().unwrap(),
             }
         }
     }
-    
+
+    impl OutputData<AllData> for AllData {
+        fn new() -> AllData {
+            let sys_info = SysInfo::new();
+            let cpu = CpuInfo::new();
+            let memory = MemInfo::new();
+            let network = NetworkInterface::get_network_interfaces();
+            let components = Component::get_components();
+            let storage = Disk::get_discs();
+
+            AllData {
+                sys_info,
+                cpu,
+                memory,
+                network,
+                storage,
+                components,
+            }
+        }
+    }
+
     impl Process {
         fn new(
-            pid: u32, name: String, cpu_usage: f32, lifetime: u64,
-            virtual_memory: u64, read_bytes: u64, write_bytes: u64) -> Process {
+            pid: u32,
+            name: String,
+            cpu_usage: f32,
+            lifetime: u64,
+            virtual_memory: u64,
+            read_bytes: u64,
+            write_bytes: u64,
+        ) -> Process {
             Process {
                 pid,
                 name,
@@ -185,12 +212,11 @@ pub mod sys_metrics {
                     process.name().to_str().unwrap().to_string(),
                     process.cpu_usage(),
                     lifetime,
-                    process.virtual_memory()/1024,
-                    process.disk_usage().read_bytes/1024,
-                    process.disk_usage().written_bytes/1024
+                    process.virtual_memory() / 1024,
+                    process.disk_usage().read_bytes / 1024,
+                    process.disk_usage().written_bytes / 1024,
                 );
                 processes.push(proc);
-
             }
             processes
         }
@@ -201,18 +227,19 @@ pub mod sys_metrics {
 
     impl Disk {
         fn new(
-            name: String, available_space: u64,
-            total_space: u64, file_system: String,
-            mount_point: String) -> Disk
-        {
-            Disk{
+            name: String,
+            available_space: u64,
+            total_space: u64,
+            file_system: String,
+            mount_point: String,
+        ) -> Disk {
+            Disk {
                 name,
                 available_space,
                 total_space,
                 file_system,
-                mount_point
+                mount_point,
             }
-
         }
         pub fn get_discs() -> Vec<Disk> {
             let mut disks = Vec::<Disk>::new();
@@ -223,33 +250,36 @@ pub mod sys_metrics {
             for _disk in &discs {
                 let _disk = Disk::new(
                     _disk.name().to_str().unwrap().to_string(),
-                    _disk.available_space()/1024/1024,
-                    _disk.total_space()/1024/1024,
+                    _disk.available_space() / 1024 / 1024,
+                    _disk.total_space() / 1024 / 1024,
                     _disk.file_system().to_str().unwrap().to_string(),
-                    _disk.mount_point().to_str().unwrap().to_string()
+                    _disk.mount_point().to_str().unwrap().to_string(),
                 );
                 disks.push(_disk);
             }
             disks
-
         }
         pub fn json_data(data: Vec<Disk>) -> Json<Vec<Disk>> {
             Json(data)
         }
     }
 
-    impl NetworkInterface{
-        fn new(name: String, mac_addr: String,
-               ip: String, prefix: u8, total_received: u64,
-               total_transmitted: u64,) -> NetworkInterface
-        {
-            NetworkInterface{
+    impl NetworkInterface {
+        fn new(
+            name: String,
+            mac_addr: String,
+            ip: String,
+            prefix: u8,
+            total_received: u64,
+            total_transmitted: u64,
+        ) -> NetworkInterface {
+            NetworkInterface {
                 name,
                 mac_addr,
                 ip,
                 prefix,
                 total_received,
-                total_transmitted
+                total_transmitted,
             }
         }
         pub fn get_network_interfaces() -> Vec<NetworkInterface> {
@@ -267,7 +297,7 @@ pub mod sys_metrics {
                         ip_data[0].addr.to_string(),
                         ip_data[0].prefix,
                         data.total_received(),
-                        data.total_transmitted()
+                        data.total_transmitted(),
                     );
                     network_interfaces.push(_interface);
                 }
@@ -282,10 +312,10 @@ pub mod sys_metrics {
 
     impl Component {
         fn new(label: String, current_temperature: f32, max_temperature: f32) -> Component {
-            Component{
+            Component {
                 label,
                 current_temperature,
-                max_temperature
+                max_temperature,
             }
         }
         pub fn get_components() -> Vec<Component> {
@@ -295,26 +325,29 @@ pub mod sys_metrics {
 
             let sys_components = Components::new_with_refreshed_list();
             for component in &sys_components {
-                let comp = Component::new(component.label().to_string(), component.temperature(), component.max());
+                let comp = Component::new(
+                    component.label().to_string(),
+                    component.temperature(),
+                    component.max(),
+                );
                 all_components.push(comp);
             }
             all_components
         }
 
-        pub fn json_data(data: Vec<Component>) -> Json<Vec<Component>> {Json(data)}
-    }
-
-    impl CpuData{
-        fn new( name: String, vendor_id: String, 
-                cpu_usage: f32, brand: String) -> CpuData 
-        {
-                CpuData {
-                    name,
-                    vendor_id,
-                    cpu_usage,
-                    brand
-                }
+        pub fn json_data(data: Vec<Component>) -> Json<Vec<Component>> {
+            Json(data)
         }
     }
-    
+
+    impl CpuData {
+        fn new(name: String, vendor_id: String, cpu_usage: f32, brand: String) -> CpuData {
+            CpuData {
+                name,
+                vendor_id,
+                cpu_usage,
+                brand,
+            }
+        }
+    }
 }
